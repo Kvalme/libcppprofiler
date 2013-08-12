@@ -119,7 +119,7 @@ void Profiler::_StartModule(const char *module_name)
 	memcpy(buf_pointer, module_name, mod_name_length);
 	buf_pointer += mod_name_length;
 
-	*((uint64_t *)buf_pointer) = CLOCK_TIME(_profiling_start_);
+	*((uint64_t *)buf_pointer) = CLOCK_TIME(clock::now());
 
 	uint64_t internal_time = std::chrono::duration_cast<std::chrono::nanoseconds>(clock::now() - _internal_start_).count();
 
@@ -146,7 +146,7 @@ void Profiler::_EndModule()
 	*((RECORD_TYPE *)buf_pointer) = RECORD_TYPE::MODULE_END;
 	buf_pointer += sizeof(RECORD_TYPE);
 
-	*((uint64_t *)buf_pointer) = CLOCK_TIME(_profiling_start_);
+	*((uint64_t *)buf_pointer) = CLOCK_TIME(clock::now());
 
 	uint64_t internal_time = std::chrono::duration_cast<std::chrono::nanoseconds>(clock::now() - _internal_start_).count();
 
