@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <string>
+#include <vector>
 #include "cppprofiler.h"
 
 using namespace CPPProfiler;
@@ -14,6 +15,8 @@ std::string add_spacer(int depth)
 	std::string d(depth, '\t');
 	return d;
 }
+
+std::vector<uint64_t> start_times;
 
 int module_depth = 0;
 void proceed_data_dump(int inFile, std::ofstream &out)
@@ -49,6 +52,7 @@ void proceed_module_start(int inFile, std::ofstream &out)
 
 	out << add_spacer(module_depth) << "<Module type=\"" << (int)Profiler::RECORD_TYPE::MODULE_START << "\" timestamp=\"" << start << "\" name=\"" << name << "\"/>" << std::endl;
 	module_depth++;
+	start_times.push_back(start);
 }
 
 void proceed_module_end(int inFile, std::ofstream &out)
@@ -57,7 +61,10 @@ void proceed_module_end(int inFile, std::ofstream &out)
 	uint64_t start;
 	if (read(inFile, &start, sizeof(start)) != sizeof(start))return;
 
-	out << add_spacer(module_depth) << "<ModuleEnd timestamp=\"" << start << "\" />" << std::endl;
+	uint64_t mod_start = start_times.back();
+	start_times.pop_back();
+	
+	out << add_spacer(module_depth) << "<ModuleEnd timestamp=\"" << start << "\" duration=\""<<start- mod_start<<"\"/>" << std::endl;
 	module_depth--;
 	out << add_spacer(module_depth) << "</Module>" << std::endl;
 }
