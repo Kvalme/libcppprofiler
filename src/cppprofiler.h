@@ -20,11 +20,12 @@
 namespace CPPProfiler
 {
 
-#define PROFILE_START(name) Profiler::startModule(name);
-#define PROFILE_END Profiler::endModule();
+#define PROFILE_START(name) CPPProfiler::Profiler::startModule(name);
+#define PROFILE_END CPPProfiler::Profiler::endModule();
+#define PROFILE_FUNCTION CPPProfiler::ProfileHelper prof_helper__(__FUNCTION__);
 
 typedef std::chrono::high_resolution_clock clock;
-	
+
 class Profiler
 {
 	public:
@@ -64,7 +65,7 @@ class Profiler
 		int buf_pos;
 
 		int _thread_id_;
-		
+
 		int _fd_;
 };
 

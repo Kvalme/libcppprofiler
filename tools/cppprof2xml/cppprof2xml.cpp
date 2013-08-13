@@ -32,11 +32,11 @@ void proceed_data_dump(int inFile, std::ofstream &out)
 void proceed_internal_record(int inFile, std::ofstream &out)
 {
 	std::cerr << __FUNCTION__ << std::endl;
-	uint64_t start, duration;
+	uint64_t start, end;
 	if (read(inFile, &start, sizeof(start)) != sizeof(start))return;
-	if (read(inFile, &duration, sizeof(duration)) != sizeof(start))return;
+	if (read(inFile, &end, sizeof(end)) != sizeof(end))return;
 
-	out << add_spacer(module_depth) << "<Internal type=\"" << (int)Profiler::RECORD_TYPE::DATA_DUMP << "\" start=\"" << start << "\" duration=\"" << duration << "\" />" << std::endl;
+	out << add_spacer(module_depth) << "<Internal type=\"" << (int)Profiler::RECORD_TYPE::DATA_DUMP << "\" start=\"" << start <<" end=\""<<end<<"\""<< "\" duration=\"" << end - start<< "\" />" << std::endl;
 }
 
 void proceed_module_start(int inFile, std::ofstream &out)

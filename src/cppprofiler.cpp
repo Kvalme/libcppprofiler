@@ -12,6 +12,8 @@ using namespace CPPProfiler;
 
 #define CLOCK_TIME(clk) std::chrono::duration_cast<std::chrono::nanoseconds>(clk.time_since_epoch()).count()
 
+const int internal_size = sizeof(uint64_t) + sizeof(Profiler::RECORD_TYPE) + sizeof(uint64_t);
+
 clock::time_point _profiling_start_ = clock::now();
 thread_local std::unique_ptr<Profiler> _profiler_;
 thread_local clock::time_point _internal_start_;
@@ -73,30 +75,22 @@ void Profiler::endModule()
 	_profiler_->_EndModule();
 }
 
-inline int reserve_internal()
+inline void write_internal(char *buf, uint64_t start, uint64_t end, Profiler::RECORD_TYPE r_type = Profiler::RECORD_TYPE::INTERNAL_RECORD)
 {
-	return sizeof(uint64_t) + sizeof(Profiler::RECORD_TYPE) + sizeof(uint64_t);
-}
-
-inline void write_internal(char *buf, uint64_t start, uint64_t duration_ns, Profiler::RECORD_TYPE r_type = Profiler::RECORD_TYPE::INTERNAL_RECORD)
-{
-	Profiler::RECORD_TYPE *r = (Profiler::RECORD_TYPE *)buf;
-	*r = Profiler::RECORD_TYPE::INTERNAL_RECORD;
+	*((Profiler::RECORD_TYPE *)buf) = Profiler::RECORD_TYPE::INTERNAL_RECORD;
 	buf += sizeof(Profiler::RECORD_TYPE);
 
-	uint64_t *s = (uint64_t *)buf;
-	*s = start;
+	*((uint64_t *)buf) = start;
 	buf += sizeof(uint64_t);
 	
-	uint64_t *dur = (uint64_t *)buf;
-	*dur = duration_ns;
+	*((uint64_t *)buf) = end;
 }
 
 void Profiler::_StartModule(const char *module_name)
 {
-	int cur_pos = buf_pos;
-	buf_pos += reserve_internal();
-
+	int cur_pos(buf_pos);
+	buf_pos += internal_size;
+	
 	int mod_name_length = strlen(module_name) + 1;
 	int record_size = mod_name_length + sizeof(RECORD_TYPE) + sizeof(uint64_t) + sizeof(uint16_t);
 
@@ -104,7 +98,7 @@ void Profiler::_StartModule(const char *module_name)
 	{
 		_Flush();
 		cur_pos = buf_pos;
-		buf_pos += reserve_internal();
+		buf_pos += internal_size;
 	}
 
 	char *buf_pointer = buf + buf_pos;
@@ -118,18 +112,17 @@ void Profiler::_StartModule(const char *module_name)
 	
 	memcpy(buf_pointer, module_name, mod_name_length);
 	buf_pointer += mod_name_length;
+	
+	uint64_t now = CLOCK_TIME(clock::now());
+	*((uint64_t *)buf_pointer) = now;
 
-	*((uint64_t *)buf_pointer) = CLOCK_TIME(clock::now());
-
-	uint64_t internal_time = std::chrono::duration_cast<std::chrono::nanoseconds>(clock::now() - _internal_start_).count();
-
-	write_internal(buf + cur_pos, CLOCK_TIME(_internal_start_), internal_time);
+	write_internal(buf + cur_pos, CLOCK_TIME(_internal_start_), now);
 }
 
 void Profiler::_EndModule()
 {
-	int cur_pos = buf_pos;
-	buf_pos += reserve_internal();
+	int cur_pos(buf_pos);
+	buf_pos += internal_size;
 
 	int record_size = sizeof(RECORD_TYPE) + sizeof(uint64_t);
 
@@ -137,7 +130,7 @@ void Profiler::_EndModule()
 	{
 		_Flush();
 		cur_pos = buf_pos;
-		buf_pos += reserve_internal();
+		buf_pos += internal_size;
 	}
 
 	char *buf_pointer = buf + buf_pos;
@@ -146,11 +139,10 @@ void Profiler::_EndModule()
 	*((RECORD_TYPE *)buf_pointer) = RECORD_TYPE::MODULE_END;
 	buf_pointer += sizeof(RECORD_TYPE);
 
-	*((uint64_t *)buf_pointer) = CLOCK_TIME(clock::now());
-
-	uint64_t internal_time = std::chrono::duration_cast<std::chrono::nanoseconds>(clock::now() - _internal_start_).count();
-
-	write_internal(buf + cur_pos, CLOCK_TIME(_internal_start_), internal_time);
+	uint64_t now = CLOCK_TIME(clock::now());
+	*((uint64_t *)buf_pointer) = now;
+	
+	write_internal(buf + cur_pos, CLOCK_TIME(_internal_start_), now);
 }
 
 
@@ -172,7 +164,7 @@ void Profiler::_Flush()
 	
 	write_internal(buf, CLOCK_TIME(_internal_start_), internal_time, RECORD_TYPE::DATA_DUMP);
 
-	buf_pos = reserve_internal();
+	buf_pos = internal_size;
 }
 
 
