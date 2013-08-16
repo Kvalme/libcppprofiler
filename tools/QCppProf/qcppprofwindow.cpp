@@ -127,8 +127,8 @@ void QCppProfWindow::parseFile(QString file)
 				if (read(inFile, &duration, sizeof(duration)) != sizeof(duration))return;
 
 				ProfData dta;
-				dta.start = (double)(start - header.start_time);
-				dta.end = (double)(start - header.start_time + duration);
+				dta.start = (double)(start - header.start_time)/1000.;
+				dta.end = (double)(start - header.start_time + duration)/1000.;
 				dta.depth = depth;
 				dta.name = "Data dump";
 
@@ -143,8 +143,8 @@ void QCppProfWindow::parseFile(QString file)
 				if (read(inFile, &end, sizeof(end)) != sizeof(end))return;
 
 				ProfData dta;
-				dta.start = (double)(start - header.start_time);
-				dta.end = (double)(end - header.start_time);
+				dta.start = (double)(start - header.start_time)/1000.;
+				dta.end = (double)(end - header.start_time)/1000.;
 				dta.depth = depth;
 				dta.name = "Profiler internal";
 
@@ -163,7 +163,7 @@ void QCppProfWindow::parseFile(QString file)
 				if (read(inFile, &start, sizeof(start)) != sizeof(start))return;
 
 				ProfData dta;
-				dta.start = (double)(start - header.start_time);
+				dta.start = (double)(start - header.start_time)/1000.;
 				dta.depth = depth;
 				dta.name = name;
 
@@ -185,7 +185,7 @@ void QCppProfWindow::parseFile(QString file)
 				depth--;
 				write_location.pop();
 				ProfData &d = write_location.top()->back();
-				d.end = (double)(start - header.start_time);
+				d.end = (double)(start - header.start_time)/1000.;
 
 				etm = d.end;
 
@@ -200,11 +200,11 @@ void QCppProfWindow::parseFile(QString file)
 	buildGraph(modules);
 
 //	ui->PlotArea->xAxis->setRange(stm, etm - stm);
-	int pos = (etm - stm)/1000000;
+	int pos = (etm - stm)/30000;
 	ui->scale->setValue(pos);
 
 
-	ui->PlotArea->xAxis->setRange(stm, 1000000);
+	ui->PlotArea->xAxis->setRange(stm, 30000);
 	ui->PlotArea->yAxis->setRange(0, maxDepth);
 	ui->PlotArea->xAxis->setAutoTickLabels(true);
 	ui->PlotArea->xAxis->setAutoTickCount(10);
@@ -234,11 +234,11 @@ void QCppProfWindow::addRect(double start, double end, int level, QString name)
 	rect->setBrush(QBrush(QColor(200, 200, 200, 128)));
 	rect->setPen(QPen(Qt::red));
 
-	if (end - start > 100000)
+	if (end - start > 0.5)
 	{
 		QCPItemText *text = new QCPItemText(ui->PlotArea);
 		text->setParent(rect);
-		text->setText(name);
+		text->setText(QString("%1 (dur=%2 us)").arg(name).arg(end - start));
 	//	text->setTextAlignment(Qt::AlignBottom | Qt::AlignLeft);
 		text->position->setCoords(start + (end - start)/2., level+0.5);
 		text->position->setType(QCPItemPosition::ptPlotCoords);
