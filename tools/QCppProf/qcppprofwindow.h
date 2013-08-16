@@ -21,6 +21,8 @@ private slots:
 	void on_horizontalScrollBar_valueChanged(int value);
 	void on_actionOpen_triggered();
 
+	void on_scale_valueChanged(int value);
+
 private:
 	void parseFile(QString file);
 	void addRect(double start, double end, int level, QString name);

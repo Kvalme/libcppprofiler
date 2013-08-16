@@ -9,6 +9,8 @@
 #include <fcntl.h>
 #include <stack>
 
+double stm = -1, etm;
+
 
 QCppProfWindow::QCppProfWindow(QWidget *parent) :
 	QMainWindow(parent),
@@ -64,11 +66,17 @@ void QCppProfWindow::on_pushButton_released()
 
 void QCppProfWindow::on_horizontalScrollBar_valueChanged(int value)
 {
-	if (qAbs(ui->PlotArea->xAxis->range().center()-value/100.0) > 0.01) // if user is dragging plot, we don't want to replot twice
-	  {
-		ui->PlotArea->xAxis->setRange(value, ui->PlotArea->xAxis->range().size(), Qt::AlignLeft);
+/*	if (qAbs(ui->PlotArea->xAxis->range().center()-value/ui->horizontalScrollBar->maximum()) > 0.01) // if user is dragging plot, we don't want to replot twice
+	  {*/
+
+	double size = ui->PlotArea->xAxis->range().size();
+	double pos = ui->PlotArea->xAxis->range().center();
+	double rel = (double)value/1000000.;
+	std::cerr<<"rel:"<<rel<<std::endl;
+	std::cerr<<"Pos:"<<stm + rel * (etm - stm)<<std::endl;
+	ui->PlotArea->xAxis->setRange(stm + rel * (etm - stm) , ui->PlotArea->xAxis->range().size(), Qt::AlignLeft);
 		ui->PlotArea->replot();
-	  }
+//	  }
 }
 
 void QCppProfWindow::on_actionOpen_triggered()
@@ -101,7 +109,6 @@ void QCppProfWindow::parseFile(QString file)
 	int depth = 0;
 	int maxDepth = 0;
 	uint32_t end_time = 0;
-	double stm = -1, etm;
 
 	modules.clear();
 
@@ -162,8 +169,6 @@ void QCppProfWindow::parseFile(QString file)
 
 				if (stm <0) stm = dta.start;
 
-				std::cerr<<"Module start:"<<start<<" global start:"<<header.start_time<<" result:"<<dta.start<<std::endl;
-
 				write_location.top()->push_back(dta);
 				ProfData &d = write_location.top()->back();
 
@@ -194,8 +199,15 @@ void QCppProfWindow::parseFile(QString file)
 
 	buildGraph(modules);
 
-	ui->PlotArea->xAxis->setRange(stm, etm - stm);
+//	ui->PlotArea->xAxis->setRange(stm, etm - stm);
+	int pos = (etm - stm)/1000000;
+	ui->scale->setValue(pos);
+
+
+	ui->PlotArea->xAxis->setRange(stm, 1000000);
 	ui->PlotArea->yAxis->setRange(0, maxDepth);
+	ui->PlotArea->xAxis->setAutoTickLabels(true);
+	ui->PlotArea->xAxis->setAutoTickCount(10);
 
 	ui->PlotArea->replot();
 }
@@ -212,8 +224,6 @@ void QCppProfWindow::buildGraph(std::vector<ProfData> &mods)
 
 void QCppProfWindow::addRect(double start, double end, int level, QString name)
 {
-//	std::cerr<<"Adding:"<<start<<":"<<end<<":"<<level<<std::endl;
-//	QCPItemText *text = new QCPItemText(ui->PlotArea);
 	QCPItemRect *rect = new QCPItemRect(ui->PlotArea);
 	ui->PlotArea->addItem(rect);
 
@@ -221,13 +231,29 @@ void QCppProfWindow::addRect(double start, double end, int level, QString name)
 	rect->topLeft->setCoords(start, level);
 	rect->bottomRight->setType(QCPItemPosition::ptPlotCoords);
 	rect->bottomRight->setCoords(end, level+1);
-	rect->setBrush(QBrush(Qt::gray));
+	rect->setBrush(QBrush(QColor(200, 200, 200, 128)));
 	rect->setPen(QPen(Qt::red));
 
-/*	text->setParent(rect);
-	text->setText(name);
-	text->setTextAlignment(Qt::AlignTop | Qt::AlignLeft);
-	text->position->setCoords(start, level);
-	text->position->setType(QCPItemPosition::ptPlotCoords);*/
+	if (end - start > 100000)
+	{
+		QCPItemText *text = new QCPItemText(ui->PlotArea);
+		text->setParent(rect);
+		text->setText(name);
+	//	text->setTextAlignment(Qt::AlignBottom | Qt::AlignLeft);
+		text->position->setCoords(start + (end - start)/2., level+0.5);
+		text->position->setType(QCPItemPosition::ptPlotCoords);
+		text->setRotation(-90);
+	}
 
+}
+
+void QCppProfWindow::on_scale_valueChanged(int value)
+{
+	double size = ui->PlotArea->xAxis->range().size();
+	double pos = ui->PlotArea->xAxis->range().center();
+	double rel = (double)value/1000000.;
+	double newSize = rel * (etm - stm);
+
+	ui->PlotArea->xAxis->setRange(pos - newSize/2. , rel * (etm - stm), Qt::AlignLeft);
+	ui->PlotArea->replot();
 }
