@@ -67,6 +67,7 @@ class Profiler
 		int _thread_id_;
 
 		int _fd_;
+		thread_local static std::unique_ptr<Profiler> _profiler_;
 };
 
 class ProfileHelper

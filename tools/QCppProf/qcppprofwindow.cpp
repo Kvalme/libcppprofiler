@@ -18,11 +18,15 @@ QCppProfWindow::QCppProfWindow(QWidget *parent) :
 {
 	ui->setupUi(this);
 
-
-
-
 	ui->PlotArea->xAxis->setRange(0, 102);
 	ui->PlotArea->yAxis->setRange(0, 20);
+
+    ui->timeScale->clear();
+    ui->timeScale->addItem("ns", QVariant(1));
+    ui->timeScale->addItem("us", QVariant(1e3));
+    ui->timeScale->addItem("ms", QVariant(1e6));
+    ui->timeScale->addItem("s", QVariant(1e9));
+    ui->timeScale->setCurrentIndex(0);
 
 }
 
@@ -71,11 +75,14 @@ void QCppProfWindow::on_horizontalScrollBar_valueChanged(int value)
 
 	double size = ui->PlotArea->xAxis->range().size();
 	double pos = ui->PlotArea->xAxis->range().center();
-	double rel = (double)value/1000000.;
+    double rel = (double)value/1000000.;
+    double range = ui->scale->value() * ui->timeScale->itemData(ui->timeScale->currentIndex()).toFloat();
 	std::cerr<<"rel:"<<rel<<std::endl;
 	std::cerr<<"Pos:"<<stm + rel * (etm - stm)<<std::endl;
-	ui->PlotArea->xAxis->setRange(stm + rel * (etm - stm) , ui->PlotArea->xAxis->range().size(), Qt::AlignLeft);
-		ui->PlotArea->replot();
+    ui->PlotArea->xAxis->setRange(stm + rel * (etm - stm), range, Qt::AlignLeft);
+    ui->PlotArea->clearItems();
+    buildGraph(modules);
+    ui->PlotArea->replot();
 //	  }
 }
 
@@ -100,11 +107,11 @@ void QCppProfWindow::parseFile(QString file)
 	Profiler::FileHeader header, header_orig;
 
 	if (read(inFile, &header, sizeof(header)) != sizeof(header))return;
-	if (memcmp(header_orig.MAGIC, header.MAGIC, sizeof(header.MAGIC)) != 0)
+/*	if (memcmp(header_orig.MAGIC, header.MAGIC, sizeof(header.MAGIC)) != 0)
 	{
 		QMessageBox::critical(this, "Unable to parse file", QString("Invalid magic bytes"));
 		::close(inFile);
-	}
+    }*/
 
 	int depth = 0;
 	int maxDepth = 0;
@@ -200,12 +207,10 @@ void QCppProfWindow::parseFile(QString file)
 	buildGraph(modules);
 
 //	ui->PlotArea->xAxis->setRange(stm, etm - stm);
-	int pos = (etm - stm)/30000;
-	ui->scale->setValue(pos);
+    //ui->scale->setValue(1);
 
-
-	ui->PlotArea->xAxis->setRange(stm, 30000);
-	ui->PlotArea->yAxis->setRange(0, maxDepth);
+    ui->PlotArea->xAxis->setRange(stm, ui->scale->value());
+    ui->PlotArea->yAxis->setRange(0, 10);
 	ui->PlotArea->xAxis->setAutoTickLabels(true);
 	ui->PlotArea->xAxis->setAutoTickCount(10);
 
@@ -214,35 +219,52 @@ void QCppProfWindow::parseFile(QString file)
 
 void QCppProfWindow::buildGraph(std::vector<ProfData> &mods)
 {
+    double left = ui->PlotArea->xAxis->range().lower;
+    double right = ui->PlotArea->xAxis->range().upper;
+
+//    std::cerr<<"Item count: "<<ui->PlotArea->itemCount()<<std::endl;
+//    std::cerr<<"Removed items count:"<<ui->PlotArea->clearItems()<<std::endl;
+
+    double range = ui->PlotArea->xAxis->range().size();
+//    std::cerr<<"Range: "<<range<<std::endl;
+
 	for(ProfData &pd : mods)
 	{
+        if ((pd.start < left && pd.end < left) ||
+                (pd.start > right)) continue;
+
 		addRect(pd.start, pd.end, pd.depth, pd.name);
-		buildGraph(pd.submodules);
+        buildGraph(pd.submodules);
 	}
 
 }
 
 void QCppProfWindow::addRect(double start, double end, int level, QString name)
 {
+    if ((ui->PlotArea->width() * ((end - start) / ui->PlotArea->xAxis->range().size())) < 1) return;
+
 	QCPItemRect *rect = new QCPItemRect(ui->PlotArea);
 	ui->PlotArea->addItem(rect);
 
-	rect->topLeft->setType(QCPItemPosition::ptPlotCoords);
-	rect->topLeft->setCoords(start, level);
+    rect->topLeft->setType(QCPItemPosition::ptPlotCoords);
+    rect->topLeft->setCoords(start, level + 1);
 	rect->bottomRight->setType(QCPItemPosition::ptPlotCoords);
-	rect->bottomRight->setCoords(end, level+1);
+    rect->bottomRight->setCoords(end, level);
 	rect->setBrush(QBrush(QColor(200, 200, 200, 128)));
 	rect->setPen(QPen(Qt::red));
 
-	if (end - start > 0.5)
+
+    if (end - start > 0.5)
 	{
 		QCPItemText *text = new QCPItemText(ui->PlotArea);
 		text->setParent(rect);
-		text->setText(QString("%1 (dur=%2 us)").arg(name).arg(end - start));
+        text->setText(QString("%1\n(dur=%2 us)").arg(name).arg(end - start));
 	//	text->setTextAlignment(Qt::AlignBottom | Qt::AlignLeft);
-		text->position->setCoords(start + (end - start)/2., level+0.5);
-		text->position->setType(QCPItemPosition::ptPlotCoords);
-		text->setRotation(-90);
+        text->position->setParentAnchor(rect->top);
+        text->setPositionAlignment(Qt::AlignHCenter | Qt::AlignTop);
+//		text->position->setCoords(start + (end - start)/2., level+0.5);
+//		text->position->setType(QCPItemPosition::ptPlotCoords);
+//		text->setRotation(-90);
 	}
 
 }
@@ -251,9 +273,10 @@ void QCppProfWindow::on_scale_valueChanged(int value)
 {
 	double size = ui->PlotArea->xAxis->range().size();
 	double pos = ui->PlotArea->xAxis->range().center();
-	double rel = (double)value/1000000.;
-	double newSize = rel * (etm - stm);
 
-	ui->PlotArea->xAxis->setRange(pos - newSize/2. , rel * (etm - stm), Qt::AlignLeft);
+    double val = ui->timeScale->itemData(ui->timeScale->currentIndex()).toFloat() * value;
+
+    ui->PlotArea->xAxis->setRange(pos - value/2., val, Qt::AlignLeft);
+    buildGraph(modules);
 	ui->PlotArea->replot();
 }

@@ -15,7 +15,7 @@ using namespace CPPProfiler;
 const int internal_size = sizeof(uint64_t) + sizeof(Profiler::RECORD_TYPE) + sizeof(uint64_t);
 
 clock::time_point _profiling_start_ = clock::now();
-thread_local std::unique_ptr<Profiler> _profiler_;
+thread_local std::unique_ptr<Profiler> Profiler::_profiler_(new Profiler);
 thread_local clock::time_point _internal_start_;
 static int id = 0;
 
@@ -60,7 +60,7 @@ Profiler::~Profiler()
 
 void Profiler::init()
 {
-	_profiler_.reset(new Profiler);
+//	_profiler_.reset(new Profiler);
 }
 
 void Profiler::startModule(const char *module_name)
