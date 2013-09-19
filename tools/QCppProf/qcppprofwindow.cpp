@@ -3,6 +3,7 @@
 #include "cppprofiler.h"
 #include "QFileDialog"
 #include "QMessageBox"
+#include "threadlistentry.h"
 #include <QProgressBar>
 #include <QTime>
 
@@ -44,6 +45,10 @@ QCppProfWindow::QCppProfWindow(QWidget *parent) :
     ui->PlotArea->axisRect(0)->setRangeDragAxes(ui->PlotArea->xAxis, 0);
     ui->PlotArea->axisRect(0)->setRangeZoomAxes(ui->PlotArea->xAxis, 0);
 
+	ui->PlotArea->xAxis->setLabel(QString("time, %1").arg(ui->timeScale->currentText()));
+	ui->PlotArea->xAxis->setAutoTickLabels(true);
+	ui->PlotArea->xAxis->setAutoTickCount(10);
+
 
     connect(ui->PlotArea, SIGNAL(beforeReplot()), this, SLOT(updatePlot()));
 
@@ -62,12 +67,44 @@ void QCppProfWindow::on_horizontalScrollBar_valueChanged(int value)
 void QCppProfWindow::on_actionOpen_triggered()
 {
 	QString fname = QFileDialog::getOpenFileName(this, "Profile data", "", "Profiling data (*.cppprof)");
-	parseFile(fname);
+
+	QFileInfo fi(fname);
+	QString basename = fi.baseName().section('_', 0, -2);
+	QString ext = fi.completeSuffix();
+
+	QDir dir(fi.absolutePath());
+	QStringList filters;
+	filters<< QString("%1_?.%2").arg(basename).arg(ext);
+
+	std::cerr<<"Dir:"<<fi.absolutePath().toUtf8().data()<<std::endl;
+	std::cerr<<"Filter:"<<filters[0].toUtf8().data()<<std::endl;
+
+//	dir.setFilter(filters);
+	QStringList files = dir.entryList(filters);
+	maxDepth = 0;
+	modules.clear();
+	ui->threadList->clear();
+	for(int a = 0; a < files.count(); ++a)
+	{
+		std::cerr<<"File "<<a<<":"<<files[a].toUtf8().data()<<std::endl;
+		std::list<ProfData> dta;
+		parseFile(dir.absoluteFilePath(files[a]), dta);
+		modules.push_back(dta);
+		QListWidgetItem *item = new QListWidgetItem();
+		ui->threadList->addItem(item);
+		ThreadListEntry *tle = new ThreadListEntry(a, QString("%1").arg(a), QColor(200, 200, 200, 255));
+		connect(tle, SIGNAL(changed()), this, SLOT(updatePlot()));
+		ui->threadList->setItemWidget(item, tle);
+	}
+
+	ui->PlotArea->yAxis->setRange(0, (maxDepth + 1) * files.count());
+
+	updatePlot();
 }
 
 using namespace CPPProfiler;
 
-void QCppProfWindow::parseFile(QString fname)
+void QCppProfWindow::parseFile(QString fname, std::list<ProfData> &dat)
 {
     QFile file(fname);
     if (!file.open(QIODevice::ReadOnly))
@@ -105,14 +142,12 @@ void QCppProfWindow::parseFile(QString fname)
     }*/
 
 	int depth = 0;
-	int maxDepth = 0;
 	uint32_t end_time = 0;
     int lastReadBytes = 0;
 
-	modules.clear();
+	std::stack<std::list<ProfData>*> write_location;
+	write_location.push(&dat);
 
-	std::stack<std::vector<ProfData>*> write_location;
-	write_location.push(&modules);
     QTime time;
     time.start();
 	Profiler::RECORD_TYPE recordType;
@@ -231,24 +266,9 @@ void QCppProfWindow::parseFile(QString fname)
     QCoreApplication::processEvents();
     time.restart();
     lastReadBytes = readBytes;
-
-	buildGraph(modules);
-
-//	ui->PlotArea->xAxis->setRange(stm, etm - stm);
-    //ui->scale->setValue(1);
-
-    ui->PlotArea->yAxis->setRange(0, maxDepth+1);
-    ui->PlotArea->xAxis->setLabel(QString("time, %1").arg(ui->timeScale->currentText()));
-    ui->PlotArea->xAxis->setAutoTickLabels(true);
-    ui->PlotArea->xAxis->setAutoTickCount(10);
-
-    setRange();
-    setPosition();
-
-	ui->PlotArea->replot();
 }
 
-void QCppProfWindow::buildGraph(std::vector<ProfData> &mods)
+void QCppProfWindow::buildGraph(std::list<ProfData> &mods, int offset, QColor color)
 {
     double left = ui->PlotArea->xAxis->range().lower;
     double right = ui->PlotArea->xAxis->range().upper;
@@ -263,18 +283,18 @@ void QCppProfWindow::buildGraph(std::vector<ProfData> &mods)
 
 	for(ProfData &pd : mods)
 	{
-        if ((pd.start/currentScale < left && pd.end/currentScale < left) ||
-                (pd.start/currentScale > right)) continue;
+		if ((pd.start/currentScale < left && pd.end/currentScale < left)) continue;
+		if (pd.start/currentScale > right) break;
 
-        addRect(pd.start/currentScale, pd.end/currentScale, pd.depth, pd.shortName);
-        buildGraph(pd.submodules);
+		addRect(pd.start/currentScale, pd.end/currentScale, pd.depth + offset, pd.shortName.isEmpty()?pd.name:pd.shortName, color);
+		buildGraph(pd.submodules, offset, color);
 	}
 
 }
 
-void QCppProfWindow::addRect(double start, double end, int level, QString name)
+void QCppProfWindow::addRect(double start, double end, int level, QString name, QColor color)
 {
-    if ((ui->PlotArea->width() * ((end - start) / ui->PlotArea->xAxis->range().size())) < 1) return;
+	if ((ui->PlotArea->width() * ((end - start) / ui->PlotArea->xAxis->range().size())) < 1) return;
 
 	QCPItemRect *rect = new QCPItemRect(ui->PlotArea);
 	ui->PlotArea->addItem(rect);
@@ -283,15 +303,15 @@ void QCppProfWindow::addRect(double start, double end, int level, QString name)
     rect->topLeft->setCoords(start, level + 1);
 	rect->bottomRight->setType(QCPItemPosition::ptPlotCoords);
     rect->bottomRight->setCoords(end, level);
-	rect->setBrush(QBrush(QColor(200, 200, 200, 128)));
-	rect->setPen(QPen(Qt::red));
+	rect->setBrush(QBrush(color));
+	rect->setPen(QPen(Qt::black));
 
-
-    if ((ui->PlotArea->width() * ((end - start) / ui->PlotArea->xAxis->range().size())) > 50)
+	QString txt = QString("%1 (%2 %3)").arg(name).arg(end - start).arg(ui->timeScale->currentText());
+	if ((ui->PlotArea->width() * ((end - start) / ui->PlotArea->xAxis->range().size())) > txt.length()*10)
 	{
 		QCPItemText *text = new QCPItemText(ui->PlotArea);
 		text->setParent(rect);
-        text->setText(QString("%1\n(%2 %3)").arg(name).arg(end - start).arg(ui->timeScale->currentText()));
+		text->setText(txt);
 	//	text->setTextAlignment(Qt::AlignBottom | Qt::AlignLeft);
         text->position->setParentAnchor(rect->top);
         text->setPositionAlignment(Qt::AlignHCenter | Qt::AlignTop);
@@ -314,9 +334,19 @@ void QCppProfWindow::on_timeScale_currentIndexChanged(int index)
 
 void QCppProfWindow::updatePlot()
 {
-    ui->PlotArea->clearItems();
-    buildGraph(modules);
-    ui->PlotArea->replot();
+	if (modules.empty())return;
+	ui->PlotArea->clearItems();
+	int a = 0;
+	for (auto it = modules.begin(); it != modules.end(); ++it)
+	{
+		ThreadListEntry *tle = (ThreadListEntry*)ui->threadList->itemWidget(ui->threadList->item(a));
+		if (tle->isThreadEnabled())
+		{
+			buildGraph(*it, a * maxDepth, tle->getColor());
+		}
+		a++;
+	}
+	ui->PlotArea->replot();
 }
 
 void QCppProfWindow::setPosition()

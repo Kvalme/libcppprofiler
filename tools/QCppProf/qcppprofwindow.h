@@ -30,29 +30,31 @@ private slots:
     void updatePlot();
 
 private:
-    void parseFile(QString fname);
-	void addRect(double start, double end, int level, QString name);
-    void setRange();
-    void setPosition();
-
 	struct ProfData
 	{
 		double start;
 		double end;
 		int depth;
 		QString name;
-        QString shortName;
-		std::vector<ProfData> submodules;
+		QString shortName;
+		std::list<ProfData> submodules;
 	};
 
-	std::vector<ProfData> modules;
+	void parseFile(QString fname, std::list<ProfData> &dat);
+	void addRect(double start, double end, int level, QString name, QColor color);
+    void setRange();
+    void setPosition();
 
-	void buildGraph(std::vector<ProfData> &mods);
+
+	std::list<std::list<ProfData>> modules;
+
+	void buildGraph(std::list<ProfData> &mods, int offset, QColor color);
 
 	Ui::QCppProfWindow *ui;
     QProgressBar *progressBar;
     QLabel *speedInfo;
     double oldTimeScale;
+	int maxDepth;
 };
 
 #endif // QCPPPROFWINDOW_H

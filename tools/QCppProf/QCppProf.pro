@@ -14,10 +14,12 @@ TEMPLATE = app
 
 SOURCES += main.cpp\
         qcppprofwindow.cpp \
-    qcustomplot.cpp
+    qcustomplot.cpp \
+    threadlistentry.cpp
 
 HEADERS  += qcppprofwindow.h \
-    qcustomplot.h
+    qcustomplot.h \
+    threadlistentry.h
 
 INCLUDEPATH += ../../src
 
@@ -25,4 +27,5 @@ QMAKE_CXXFLAGS+=-std=c++11
 QMAKE_CC = gcc-4.8
 QMAKE_CXX = g++-4.8
 
-FORMS    += qcppprofwindow.ui
+FORMS    += qcppprofwindow.ui \
+    threadlistentry.ui
