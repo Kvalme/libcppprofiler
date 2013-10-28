@@ -330,17 +330,23 @@ void QCppProfWindow::addRect(double start, double end, int level, QString name, 
 	rect->setPen(QPen(Qt::black));
 
 	QString txt = QString("%1 (%2 %3)").arg(name).arg(end - start).arg(ui->timeScale->currentText());
+	QString txt_reg = QString("%1 %2").arg(end - start).arg(ui->timeScale->currentText());
+
 	if ((ui->PlotArea->width() * ((end - start) / ui->PlotArea->xAxis->range().size())) > txt.length()*10)
 	{
 		QCPItemText *text = new QCPItemText(ui->PlotArea);
 		text->setParent(rect);
 		text->setText(txt);
-	//	text->setTextAlignment(Qt::AlignBottom | Qt::AlignLeft);
         text->position->setParentAnchor(rect->top);
         text->setPositionAlignment(Qt::AlignHCenter | Qt::AlignTop);
-//		text->position->setCoords(start + (end - start)/2., level+0.5);
-//		text->position->setType(QCPItemPosition::ptPlotCoords);
-//		text->setRotation(-90);
+	}
+	else if ((ui->PlotArea->width() * ((end - start) / ui->PlotArea->xAxis->range().size())) > txt_reg.length()*10)
+	{
+		QCPItemText *text = new QCPItemText(ui->PlotArea);
+		text->setParent(rect);
+		text->setText(txt_reg);
+		text->position->setParentAnchor(rect->top);
+		text->setPositionAlignment(Qt::AlignHCenter | Qt::AlignTop);
 	}
 
 }
