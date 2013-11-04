@@ -1,17 +1,16 @@
-#define ENABLE_PROFILING 1
+#define CPP_ENABLE_PROFILING 1
 #include "cppprofiler.h"
 #include <iostream>
 #include <unistd.h>
 
 int main()
 {
-	CPPProfiler::Profiler::init();
-	PROFILE_FUNCTION
+	CPP_PROFILE_FUNCTION
 	
 	for(int a = 0; a < 10000; ++a)
 	{
-		PROFILE_START("usleep(100)");
+		CPP_PROFILE_START("usleep(100)");
 		usleep(100);
-		PROFILE_END
+		CPP_PROFILE_END
 	}
 }

@@ -43,12 +43,12 @@ public:
 	~QCppProfWindow();
 	
 private slots:
-	void on_horizontalScrollBar_valueChanged(int value);
+	void on_horizontalScrollBar_valueChanged(int);
 	void on_actionOpen_triggered();
 
-	void on_scale_valueChanged(int value);
+	void on_scale_valueChanged(int);
 
-    void on_timeScale_currentIndexChanged(int index);
+	void on_timeScale_currentIndexChanged(int);
 
     void updatePlot();
 

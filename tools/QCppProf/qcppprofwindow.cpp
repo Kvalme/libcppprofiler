@@ -82,7 +82,7 @@ QCppProfWindow::~QCppProfWindow()
 	delete ui;
 }
 
-void QCppProfWindow::on_horizontalScrollBar_valueChanged(int value)
+void QCppProfWindow::on_horizontalScrollBar_valueChanged(int)
 {
     setPosition();
 }
@@ -125,7 +125,7 @@ void QCppProfWindow::on_actionOpen_triggered()
 	updatePlot();
 }
 
-using namespace CPPProfiler;
+using namespace CppProfiler;
 
 void QCppProfWindow::parseFile(QString fname, std::list<ProfData> &dat)
 {
@@ -149,23 +149,22 @@ void QCppProfWindow::parseFile(QString fname, std::list<ProfData> &dat)
     //Get file size
     progressBar->setMaximum(size);
 
-	Profiler::FileHeader header, header_orig;
+	FileHeader header, header_orig;
 
-    if (size - readBytes < sizeof(header))
+	if ((unsigned)(size - readBytes) < sizeof(header))
     {
         QMessageBox::critical(this, "Unable to parse file", QString("No header"));
     }
     memcpy(&header, data_pointer, sizeof(header));
     readBytes+= sizeof(header);
 
-/*	if (memcmp(header_orig.MAGIC, header.MAGIC, sizeof(header.MAGIC)) != 0)
+	if (memcmp(header_orig.MAGIC, header.MAGIC, sizeof(header.MAGIC)) != 0)
 	{
 		QMessageBox::critical(this, "Unable to parse file", QString("Invalid magic bytes"));
-		::close(inFile);
-    }*/
+		return;
+	}
 
 	int depth = 0;
-	uint32_t end_time = 0;
     int lastReadBytes = 0;
 
 	std::stack<std::list<ProfData>*> write_location;
@@ -173,14 +172,14 @@ void QCppProfWindow::parseFile(QString fname, std::list<ProfData> &dat)
 
     QTime time;
     time.start();
-	Profiler::RECORD_TYPE recordType;
+	RECORD_TYPE recordType;
     while (readBytes < size)
 	{
         memcpy(&recordType, data_pointer+readBytes, sizeof(recordType));
         readBytes+= sizeof(recordType);
 		switch (recordType)
 		{
-			case Profiler::RECORD_TYPE::DATA_DUMP:
+			case RECORD_TYPE::DATA_DUMP:
 			{
 				uint64_t start, duration;
                 memcpy(&start, data_pointer+readBytes, sizeof(start));
@@ -198,7 +197,7 @@ void QCppProfWindow::parseFile(QString fname, std::list<ProfData> &dat)
 
 				break;
 			}
-			case Profiler::RECORD_TYPE::INTERNAL_RECORD:
+			case RECORD_TYPE::INTERNAL_RECORD:
 			{
 				uint64_t start, end;
 
@@ -217,7 +216,7 @@ void QCppProfWindow::parseFile(QString fname, std::list<ProfData> &dat)
 
 				break;
 			}
-			case Profiler::RECORD_TYPE::MODULE_START:
+			case RECORD_TYPE::MODULE_START:
 			{
 				uint64_t start;
 				uint16_t name_length;
@@ -251,7 +250,7 @@ void QCppProfWindow::parseFile(QString fname, std::list<ProfData> &dat)
 
 				break;
 			}
-			case Profiler::RECORD_TYPE::MODULE_END:
+			case RECORD_TYPE::MODULE_END:
 			{
 				uint64_t start;
                 memcpy(&start, data_pointer+readBytes, sizeof(start));
@@ -295,12 +294,6 @@ void QCppProfWindow::buildGraph(std::list<ProfData> &mods, int offset, QColor co
 {
     double left = ui->PlotArea->xAxis->range().lower;
     double right = ui->PlotArea->xAxis->range().upper;
-
-//    std::cerr<<"Item count: "<<ui->PlotArea->itemCount()<<std::endl;
-//    std::cerr<<"Removed items count:"<<ui->PlotArea->clearItems()<<std::endl;
-
-    double range = ui->PlotArea->xAxis->range().size();
-//    std::cerr<<"Range: "<<range<<std::endl;
 
     double currentScale = ui->timeScale->itemData(ui->timeScale->currentIndex()).toDouble();
 
@@ -351,12 +344,12 @@ void QCppProfWindow::addRect(double start, double end, int level, QString name, 
 
 }
 
-void QCppProfWindow::on_scale_valueChanged(int value)
+void QCppProfWindow::on_scale_valueChanged(int)
 {
     setRange();
 }
 
-void QCppProfWindow::on_timeScale_currentIndexChanged(int index)
+void QCppProfWindow::on_timeScale_currentIndexChanged(int)
 {
     setRange();
 }

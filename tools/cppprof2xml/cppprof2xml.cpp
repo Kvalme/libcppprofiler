@@ -6,9 +6,12 @@
 #include <string.h>
 #include <string>
 #include <vector>
+#include <stdexcept>
 #include "cppprofiler.h"
 
-using namespace CPPProfiler;
+
+
+using namespace CppProfiler;
 
 std::string add_spacer(int depth)
 {
@@ -26,7 +29,7 @@ void proceed_data_dump(int inFile, std::ofstream &out)
 	if (read(inFile, &start, sizeof(start)) != sizeof(start))return;
 	if (read(inFile, &duration, sizeof(duration)) != sizeof(duration))return;
 
-	out << add_spacer(module_depth) << "<Internal type=\"" << (int)Profiler::RECORD_TYPE::DATA_DUMP << "\" start=\"" << start << "\" duration=\"" << duration << "\" />" << std::endl;
+	out << add_spacer(module_depth) << "<Internal type=\"" << (int)RECORD_TYPE::DATA_DUMP << "\" start=\"" << start << "\" duration=\"" << duration << "\" />" << std::endl;
 }
 
 void proceed_internal_record(int inFile, std::ofstream &out)
@@ -36,7 +39,7 @@ void proceed_internal_record(int inFile, std::ofstream &out)
 	if (read(inFile, &start, sizeof(start)) != sizeof(start))return;
 	if (read(inFile, &end, sizeof(end)) != sizeof(end))return;
 
-	out << add_spacer(module_depth) << "<Internal type=\"" << (int)Profiler::RECORD_TYPE::DATA_DUMP << "\" start=\"" << start <<"\" end=\""<<end<<"\" duration=\"" << end - start<< "\" />" << std::endl;
+	out << add_spacer(module_depth) << "<Internal type=\"" << (int)RECORD_TYPE::DATA_DUMP << "\" start=\"" << start <<"\" end=\""<<end<<"\" duration=\"" << end - start<< "\" />" << std::endl;
 }
 
 void proceed_module_start(int inFile, std::ofstream &out)
@@ -50,7 +53,7 @@ void proceed_module_start(int inFile, std::ofstream &out)
 	if (read(inFile, name, name_length) != name_length)return;
 	if (read(inFile, &start, sizeof(start)) != sizeof(start))return;
 
-	out << add_spacer(module_depth) << "<Module type=\"" << (int)Profiler::RECORD_TYPE::MODULE_START << "\" timestamp=\"" << start << "\" name=\"" << name << "\"/>" << std::endl;
+	out << add_spacer(module_depth) << "<Module type=\"" << (int)RECORD_TYPE::MODULE_START << "\" timestamp=\"" << start << "\" name=\"" << name << "\"/>" << std::endl;
 	module_depth++;
 	start_times.push_back(start);
 }
@@ -72,7 +75,7 @@ void proceed_module_end(int inFile, std::ofstream &out)
 
 void proceed_file(int inFile, std::ofstream &out)
 {
-	Profiler::FileHeader header, header_orig;
+	FileHeader header, header_orig;
 
 	if (read(inFile, &header, sizeof(header)) != sizeof(header))return;
 	if (memcmp(header_orig.MAGIC, header.MAGIC, sizeof(header.MAGIC)) != 0)
@@ -83,22 +86,22 @@ void proceed_file(int inFile, std::ofstream &out)
 	out << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" << std::endl;
 	out << "<ProfileData timeStart=\"" << header.start_time << "\">" << std::endl;
 
-	Profiler::RECORD_TYPE recordType;
+	RECORD_TYPE recordType;
 
 	while (read(inFile, &recordType, sizeof(recordType)) == sizeof(recordType))
 	{
 		switch (recordType)
 		{
-			case Profiler::RECORD_TYPE::DATA_DUMP:
+			case RECORD_TYPE::DATA_DUMP:
 				proceed_data_dump(inFile, out);
 				break;
-			case Profiler::RECORD_TYPE::INTERNAL_RECORD:
+			case RECORD_TYPE::INTERNAL_RECORD:
 				proceed_internal_record(inFile, out);
 				break;
-			case Profiler::RECORD_TYPE::MODULE_START:
+			case RECORD_TYPE::MODULE_START:
 				proceed_module_start(inFile, out);
 				break;
-			case Profiler::RECORD_TYPE::MODULE_END:
+			case RECORD_TYPE::MODULE_END:
 				proceed_module_end(inFile, out);
 				break;
 		}

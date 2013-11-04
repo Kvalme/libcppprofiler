@@ -25,93 +25,86 @@
  ************************************************************************/
 
 #pragma once
-#include <thread>
-#include <chrono>
-#include <mutex>
-#include <map>
 
 //Configuration
 
 //Size of the internal cache in bytes. Shouldn't be less then size of the maximum string. Default value 100Mb
-#ifndef PROFILING_CACHE_SIZE
-#define PROFILING_CACHE_SIZE 100 * 1024 * 1024
+#ifndef CPP_PROFILING_CACHE_SIZE
+#define CPP_PROFILING_CACHE_SIZE 100 * 1024 * 1024
 #endif
 
 //Prefix for profiler output files
-#ifndef PROFILING_FILENAME_PREFIX
-#define PROFILING_FILENAME_PREFIX "CPPProf"
+#ifndef CPP_PROFILING_FILENAME_PREFIX
+#define CPP_PROFILING_FILENAME_PREFIX "CPPProf"
 #endif
 
-
-namespace CPPProfiler
-{
-#ifdef ENABLE_PROFILING
-	#define PROFILE_START(name) CPPProfiler::Profiler::startModule(name);
-	#define PROFILE_END CPPProfiler::Profiler::endModule();
-	#define PROFILE_FUNCTION CPPProfiler::ProfileHelper prof_helper__(__FUNCTION__);
+#ifdef CPP_ENABLE_PROFILING
+#define CPP_PROFILE_START(name) CppProfiler::startModule(name);
+#define CPP_PROFILE_END CppProfiler::endModule();
+#define CPP_PROFILE_FUNCTION CppProfiler::ProfileHelper prof_helper__(__FUNCTION__);
+#define CPP_PROFILE_BLOCK(name) CppProfiler::ProfileHelper prof_block_helper__(name);
 #else
-	#define PROFILE_START(name)
-	#define PROFILE_END
-	#define PROFILE_FUNCTION
+#define CPP_PROFILE_START(name)
+#define CPP_PROFILE_END
+#define CPP_PROFILE_FUNCTION
+#define CPP_PROFILE_BLOCK(name)
 #endif
 
-typedef std::chrono::high_resolution_clock clock;
+#include <stdint.h>
 
-class Profiler
+namespace CppProfiler
 {
-	public:
-		enum class RECORD_TYPE
-		{
-			MODULE_START = 0,
-			MODULE_END,
-			INTERNAL_RECORD = 0xFF,
-			DATA_DUMP
-		};
+/**
+ * Record ids to parse profiling information
+ */
+enum class RECORD_TYPE
+{
+	MODULE_START = 0,
+	MODULE_END = 1,
+	INTERNAL_RECORD = 0xFF,
+	DATA_DUMP = 0x100
+};
 
 #pragma pack(push, 1)
-		struct FileHeader
-		{
-			const char MAGIC[7] = {'C', 'P', 'P', 'P', 'R', 'O', 'F'};
-			int64_t start_time;
-		};
+struct FileHeader
+{
+	const char MAGIC[7] = {'C', 'P', 'P', 'P', 'R', 'O', 'F'};
+	int64_t start_time;
+};
 #pragma pack(pop)
 
-		static void init();
 
-		static void startModule(const char *module_name);
-		static void endModule();
+/**
+ * Adds record to profiling data with module_name
+ * @param module_name name that will be written into profiling data
+ */
+extern void startModule (const char *module_name);
 
-		static void flushProfiling();
+/**
+ * End last module
+ */
+extern void endModule();
 
-		~Profiler();
-
-	private:
-		Profiler();
-		void _StartModule(const char *module_name);
-		void _EndModule();
-		void _Flush();
-
-		char *buf;
-		int buf_size;
-		int buf_pos;
-
-		int _thread_id_;
-
-		int _fd_;
-		thread_local static std::unique_ptr<Profiler> _profiler_;
-};
+/**
+ * Dump all gathered profiling data on disk
+ */
+extern void flushProfiling();
 
 class ProfileHelper
 {
-	public:
-		ProfileHelper(const char *module_name)
-		{
-			Profiler::startModule(module_name);
-		}
-		~ProfileHelper()
-		{
-			Profiler::endModule();
-		}
+public:
+	ProfileHelper (const char *module_name)
+	{
+#ifdef CPP_ENABLE_PROFILING
+		startModule (module_name);
+#endif
+	}
+	~ProfileHelper()
+	{
+#ifdef CPP_ENABLE_PROFILING
+		endModule();
+#endif
+	}
 };
 
 }

@@ -14,7 +14,8 @@ add_library(cppprofiler-static STATIC ${libcppprofiler_SOURCES})
 
 SET_TARGET_PROPERTIES(cppprofiler-static PROPERTIES OUTPUT_NAME "cppprofiler")
 SET_TARGET_PROPERTIES(cppprofiler-static PROPERTIES PREFIX "lib")
-SET_TARGET_PROPERTIES(cppprofiler PROPERTIES PUBLIC_HEADER ${libcppprofiler_HEADERS})
+SET_TARGET_PROPERTIES(cppprofiler PROPERTIES PUBLIC_HEADER src/cppprofiler.h)
+#SET_TARGET_PROPERTIES(cppprofiler PROPERTIES PUBLIC_HEADER src/cppprofiler_impl.h)
 
 install( TARGETS cppprofiler cppprofiler-static LIBRARY DESTINATION lib ARCHIVE DESTINATION lib PUBLIC_HEADER DESTINATION include)
 
