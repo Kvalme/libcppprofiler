@@ -7,7 +7,7 @@ set(CMAKE_CXX_FLAGS -std=c++11)
 include_directories(src)
 
 set(libcppprofiler_SOURCES src/cppprofiler.cpp)
-set(libcppprofiler_HEADERS src/cppprofiler.h)
+set(libcppprofiler_HEADERS src/cppprofiler.h src/cppprofiler_format.h)
 
 add_library(cppprofiler SHARED ${libcppprofiler_SOURCES})
 add_library(cppprofiler-static STATIC ${libcppprofiler_SOURCES})
@@ -15,7 +15,7 @@ add_library(cppprofiler-static STATIC ${libcppprofiler_SOURCES})
 SET_TARGET_PROPERTIES(cppprofiler-static PROPERTIES OUTPUT_NAME "cppprofiler")
 SET_TARGET_PROPERTIES(cppprofiler-static PROPERTIES PREFIX "lib")
 SET_TARGET_PROPERTIES(cppprofiler PROPERTIES PUBLIC_HEADER src/cppprofiler.h)
-#SET_TARGET_PROPERTIES(cppprofiler PROPERTIES PUBLIC_HEADER src/cppprofiler_impl.h)
+SET_TARGET_PROPERTIES(cppprofiler PROPERTIES PUBLIC_HEADER src/cppprofiler_format.h)
 
 install( TARGETS cppprofiler cppprofiler-static LIBRARY DESTINATION lib ARCHIVE DESTINATION lib PUBLIC_HEADER DESTINATION include)
 
