@@ -8,6 +8,7 @@
 #include <vector>
 #include <stdexcept>
 #include "cppprofiler.h"
+#include "cppprofiler_format.h"
 
 
 

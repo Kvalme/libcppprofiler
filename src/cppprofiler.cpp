@@ -33,6 +33,8 @@
 #include <thread>
 #include <string.h>
 
+#include "cppprofiler_format.h"
+
 using namespace CppProfiler;
 
 class Profiler
@@ -42,29 +44,27 @@ public:
 
 	~Profiler();
 	Profiler();
-	void _StartModule (const char *module_name);
-	void _EndModule();
-	void _Flush();
+	void StartModule (const char *module_name);
+	void EndModule();
+	void Flush();
 
+	size_t buf_size;
+	size_t buf_pos;
 	char *buf;
-	int buf_size;
-	int buf_pos;
-
-	int _thread_id_;
-
-	FILE *_fd_;
-	thread_local static std::unique_ptr<Profiler> _profiler_;
-	thread_local static hclock::time_point _internal_start_;
+	
+	FILE *file;
+	thread_local static std::unique_ptr<Profiler> profiler;
+	thread_local static hclock::time_point internal_start;
 	static int id;
 };
 
 #define CLOCK_TIME(clk) std::chrono::duration_cast<std::chrono::nanoseconds>(clk.time_since_epoch()).count()
 
-const int internal_size = sizeof (uint64_t) + sizeof (RECORD_TYPE) + sizeof (uint64_t);
-Profiler::hclock::time_point _profiling_start_ = Profiler::hclock::now();
+const unsigned int internal_size = sizeof (uint64_t) + sizeof (RECORD_TYPE) + sizeof (uint64_t);
+Profiler::hclock::time_point profiling_start = Profiler::hclock::now();
 
-thread_local std::unique_ptr<Profiler> Profiler::_profiler_ (new Profiler);
-thread_local Profiler::hclock::time_point Profiler::_internal_start_;
+thread_local std::unique_ptr<Profiler> Profiler::profiler (new Profiler);
+thread_local Profiler::hclock::time_point Profiler::internal_start;
 
 int Profiler::id = 0;
 
@@ -72,54 +72,53 @@ int Profiler::id = 0;
 //Interface functions implementation
 void CppProfiler::startModule (const char *module_name)
 {
-	Profiler::_internal_start_ = Profiler::hclock::now();
-	Profiler::_profiler_->_StartModule (module_name);
+	Profiler::internal_start = Profiler::hclock::now();
+	Profiler::profiler->StartModule (module_name);
 }
 
 void CppProfiler::endModule()
 {
-	Profiler::_internal_start_ = Profiler::hclock::now();
-	Profiler::_profiler_->_EndModule();
+	Profiler::internal_start = Profiler::hclock::now();
+	Profiler::profiler->EndModule();
 }
 
 void CppProfiler::flushProfiling()
 {
-	Profiler::_profiler_->_Flush();
+	Profiler::profiler->Flush();
 }
 
 Profiler::Profiler() :
-	buf (nullptr),
 	buf_size (CPP_PROFILE_CACHE_SIZE),
 	buf_pos (0),
-	_thread_id_ (id++)
+	buf (new char[buf_size]),
+	file (nullptr)
 {
-	buf = new char[buf_size];
-	memset (buf, 0, buf_size);
-
+	unsigned int tid = id++;
+	
 	FileHeader header;
-	header.start_time = std::chrono::duration_cast<std::chrono::nanoseconds> (_profiling_start_.time_since_epoch()).count();
+	header.start_time = std::chrono::duration_cast<std::chrono::nanoseconds> (profiling_start.time_since_epoch()).count();
 
 	memcpy (buf, (char *) &header, sizeof (header));
 	buf_pos += sizeof (header);
 
-	const char fname_fmt[] = CPP_PROFILE_FILENAME_PREFIX"_%ld_%d.cppprof";
 	char fname[1024];
 
-	std::chrono::nanoseconds start_time_point = std::chrono::duration_cast<std::chrono::nanoseconds> (_profiling_start_.time_since_epoch());
+	std::chrono::nanoseconds start_time_point = std::chrono::duration_cast<std::chrono::nanoseconds> (profiling_start.time_since_epoch());
 	start_time_point.count();
 
-	snprintf (fname, 1024, fname_fmt, start_time_point.count(), _thread_id_);
+	const char fname_fmt[] = CPP_PROFILE_FILENAME_PREFIX"_%ld_%u.cppprof";
+	snprintf (fname, 1024, fname_fmt, start_time_point.count(), tid);
 
-	_fd_ = fopen (fname, "wb");
+	file = fopen (fname, "wb");
 }
 
 Profiler::~Profiler()
 {
-	_Flush();
+	Flush();
 
-	if (_fd_)
+	if (file)
 	{
-		fclose (_fd_);
+		fclose (file);
 	}
 
 	delete[] buf;
@@ -136,17 +135,17 @@ inline void write_internal (char *buf, uint64_t start, uint64_t end, RECORD_TYPE
 	* ( (uint64_t *) buf) = end;
 }
 
-void Profiler::_StartModule (const char *module_name)
+void Profiler::StartModule (const char *module_name)
 {
-	int cur_pos (buf_pos);
+	size_t cur_pos (buf_pos);
 	buf_pos += internal_size;
 
-	int mod_name_length = strlen (module_name) + 1;
-	int record_size = mod_name_length + sizeof (RECORD_TYPE) + sizeof (uint64_t) + sizeof (uint16_t);
+	unsigned int mod_name_length = strlen (module_name) + 1;
+	unsigned int record_size = mod_name_length + sizeof (RECORD_TYPE) + sizeof (uint64_t) + sizeof (uint16_t);
 
 	if (buf_pos + record_size > buf_size)
 	{
-		_Flush();
+		Flush();
 		cur_pos = buf_pos;
 		buf_pos += internal_size;
 	}
@@ -166,19 +165,19 @@ void Profiler::_StartModule (const char *module_name)
 	uint64_t now = CLOCK_TIME (hclock::now());
 	* ( (uint64_t *) buf_pointer) = now;
 
-	write_internal (buf + cur_pos, CLOCK_TIME (_internal_start_), now);
+	write_internal (buf + cur_pos, CLOCK_TIME (internal_start), now);
 }
 
-void Profiler::_EndModule()
+void Profiler::EndModule()
 {
-	int cur_pos (buf_pos);
+	size_t cur_pos (buf_pos);
 	buf_pos += internal_size;
 
-	int record_size = sizeof (RECORD_TYPE) + sizeof (uint64_t);
+	unsigned int record_size = sizeof (RECORD_TYPE) + sizeof (uint64_t);
 
 	if (buf_pos + record_size > buf_size)
 	{
-		_Flush();
+		Flush();
 		cur_pos = buf_pos;
 		buf_pos += internal_size;
 	}
@@ -192,21 +191,21 @@ void Profiler::_EndModule()
 	uint64_t now = CLOCK_TIME (hclock::now());
 	* ( (uint64_t *) buf_pointer) = now;
 
-	write_internal (buf + cur_pos, CLOCK_TIME (_internal_start_), now);
+	write_internal (buf + cur_pos, CLOCK_TIME (internal_start), now);
 }
 
-void Profiler::_Flush()
+void Profiler::Flush()
 {
-	if (!_fd_) return;
+	if (!file) return;
 
-	_internal_start_ = hclock::now();
+	internal_start = hclock::now();
 
-	int written = fwrite (buf, 1, buf_pos, _fd_);
+	size_t written = fwrite (buf, 1, buf_pos, file);
 	written++;
 
-	uint64_t internal_time = std::chrono::duration_cast<std::chrono::nanoseconds> (hclock::now() - _internal_start_).count();
+	uint64_t internal_time = std::chrono::duration_cast<std::chrono::nanoseconds> (hclock::now() - internal_start).count();
 
-	write_internal (buf, CLOCK_TIME (_internal_start_), internal_time, RECORD_TYPE::DATA_DUMP);
+	write_internal (buf, CLOCK_TIME (internal_start), internal_time, RECORD_TYPE::DATA_DUMP);
 
 	buf_pos = internal_size;
 }

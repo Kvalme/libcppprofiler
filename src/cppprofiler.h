@@ -33,15 +33,19 @@
 #define CPP_PROFILE_CACHE_SIZE 100 * 1024 * 1024
 #endif
 
-//Prefix for profiler output files
+//Prefix for profiler output files. Can contain full path, for example: /tmp/MyProjectProfiling
 #ifndef CPP_PROFILE_FILENAME_PREFIX
 #define CPP_PROFILE_FILENAME_PREFIX "CPPProf"
 #endif
 
 #ifdef CPP_PROFILE_ENABLE
+#ifdef CPP_PROFILE_PRETTY
+#define CPP_PROFILE_FUNCTION CppProfiler::ProfileHelper prof_helper__(__PRETTY_FUNCTION__);
+#else
+#define CPP_PROFILE_FUNCTION CppProfiler::ProfileHelper prof_helper__(__FUNCTION__);
+#endif
 #define CPP_PROFILE_START(name) CppProfiler::startModule(name);
 #define CPP_PROFILE_END CppProfiler::endModule();
-#define CPP_PROFILE_FUNCTION CppProfiler::ProfileHelper prof_helper__(__FUNCTION__);
 #define CPP_PROFILE_BLOCK(name) CppProfiler::ProfileHelper prof_block_helper__(name);
 #else
 #define CPP_PROFILE_START(name)
@@ -50,30 +54,8 @@
 #define CPP_PROFILE_BLOCK(name)
 #endif
 
-#include <stdint.h>
-
 namespace CppProfiler
 {
-/**
- * Record ids to parse profiling information
- */
-enum class RECORD_TYPE
-{
-	MODULE_START = 0,
-	MODULE_END = 1,
-	INTERNAL_RECORD = 0xFF,
-	DATA_DUMP = 0x100
-};
-
-#pragma pack(push, 1)
-struct FileHeader
-{
-	const char MAGIC[7] = {'C', 'P', 'P', 'P', 'R', 'O', 'F'};
-	int64_t start_time;
-};
-#pragma pack(pop)
-
-
 /**
  * Adds record to profiling data with module_name
  * @param module_name name that will be written into profiling data
