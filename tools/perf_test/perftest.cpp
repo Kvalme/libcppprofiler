@@ -1,4 +1,4 @@
-#define CPP_ENABLE_PROFILING 1
+#define CPP_PROFILE_ENABLE 1
 #include "cppprofiler.h"
 #include <iostream>
 #include <unistd.h>

@@ -29,16 +29,16 @@
 //Configuration
 
 //Size of the internal cache in bytes. Shouldn't be less then size of the maximum string. Default value 100Mb
-#ifndef CPP_PROFILING_CACHE_SIZE
-#define CPP_PROFILING_CACHE_SIZE 100 * 1024 * 1024
+#ifndef CPP_PROFILE_CACHE_SIZE
+#define CPP_PROFILE_CACHE_SIZE 100 * 1024 * 1024
 #endif
 
 //Prefix for profiler output files
-#ifndef CPP_PROFILING_FILENAME_PREFIX
-#define CPP_PROFILING_FILENAME_PREFIX "CPPProf"
+#ifndef CPP_PROFILE_FILENAME_PREFIX
+#define CPP_PROFILE_FILENAME_PREFIX "CPPProf"
 #endif
 
-#ifdef CPP_ENABLE_PROFILING
+#ifdef CPP_PROFILE_ENABLE
 #define CPP_PROFILE_START(name) CppProfiler::startModule(name);
 #define CPP_PROFILE_END CppProfiler::endModule();
 #define CPP_PROFILE_FUNCTION CppProfiler::ProfileHelper prof_helper__(__FUNCTION__);
@@ -95,13 +95,13 @@ class ProfileHelper
 public:
 	ProfileHelper (const char *module_name)
 	{
-#ifdef CPP_ENABLE_PROFILING
+#ifdef CPP_PROFILE_ENABLE
 		startModule (module_name);
 #endif
 	}
 	~ProfileHelper()
 	{
-#ifdef CPP_ENABLE_PROFILING
+#ifdef CPP_PROFILE_ENABLE
 		endModule();
 #endif
 	}

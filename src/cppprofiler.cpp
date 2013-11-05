@@ -89,7 +89,7 @@ void CppProfiler::flushProfiling()
 
 Profiler::Profiler() :
 	buf (nullptr),
-	buf_size (CPP_PROFILING_CACHE_SIZE),
+	buf_size (CPP_PROFILE_CACHE_SIZE),
 	buf_pos (0),
 	_thread_id_ (id++)
 {
@@ -102,7 +102,7 @@ Profiler::Profiler() :
 	memcpy (buf, (char *) &header, sizeof (header));
 	buf_pos += sizeof (header);
 
-	const char fname_fmt[] = CPP_PROFILING_FILENAME_PREFIX"_%ld_%d.cppprof";
+	const char fname_fmt[] = CPP_PROFILE_FILENAME_PREFIX"_%ld_%d.cppprof";
 	char fname[1024];
 
 	std::chrono::nanoseconds start_time_point = std::chrono::duration_cast<std::chrono::nanoseconds> (_profiling_start_.time_since_epoch());
