@@ -31,6 +31,7 @@
 #include <stdio.h>
 #include <chrono>
 #include <thread>
+#include <atomic>
 #include <string.h>
 
 #include "cppprofiler_format.h"
@@ -44,42 +45,38 @@ public:
 
 	~Profiler();
 	Profiler();
-	void StartModule (const char *module_name);
-	void EndModule();
+	void StartModule (const char *module_name, hclock::time_point start);
+	void EndModule (hclock::time_point start);
 	void Flush();
 
+	thread_local static std::unique_ptr<Profiler> profiler;
+private:
 	size_t buf_size;
 	size_t buf_pos;
 	char *buf;
-	
+
 	FILE *file;
-	thread_local static std::unique_ptr<Profiler> profiler;
-	thread_local static hclock::time_point internal_start;
-	static int id;
+	static std::atomic<unsigned int> id;
 };
 
 #define CLOCK_TIME(clk) std::chrono::duration_cast<std::chrono::nanoseconds>(clk.time_since_epoch()).count()
 
 const unsigned int internal_size = sizeof (uint64_t) + sizeof (RECORD_TYPE) + sizeof (uint64_t);
 Profiler::hclock::time_point profiling_start = Profiler::hclock::now();
+std::atomic<unsigned int> Profiler::id;
 
 thread_local std::unique_ptr<Profiler> Profiler::profiler (new Profiler);
-thread_local Profiler::hclock::time_point Profiler::internal_start;
-
-int Profiler::id = 0;
 
 
 //Interface functions implementation
 void CppProfiler::startModule (const char *module_name)
 {
-	Profiler::internal_start = Profiler::hclock::now();
-	Profiler::profiler->StartModule (module_name);
+	Profiler::profiler->StartModule (module_name, Profiler::hclock::now());
 }
 
 void CppProfiler::endModule()
 {
-	Profiler::internal_start = Profiler::hclock::now();
-	Profiler::profiler->EndModule();
+	Profiler::profiler->EndModule (Profiler::hclock::now());
 }
 
 void CppProfiler::flushProfiling()
@@ -93,8 +90,8 @@ Profiler::Profiler() :
 	buf (new char[buf_size]),
 	file (nullptr)
 {
-	unsigned int tid = id++;
-	
+	unsigned int tid = id.fetch_add (1);
+
 	FileHeader header;
 	header.start_time = std::chrono::duration_cast<std::chrono::nanoseconds> (profiling_start.time_since_epoch()).count();
 
@@ -135,7 +132,7 @@ inline void write_internal (char *buf, uint64_t start, uint64_t end, RECORD_TYPE
 	* ( (uint64_t *) buf) = end;
 }
 
-void Profiler::StartModule (const char *module_name)
+void Profiler::StartModule (const char *module_name, hclock::time_point start)
 {
 	size_t cur_pos (buf_pos);
 	buf_pos += internal_size;
@@ -165,10 +162,10 @@ void Profiler::StartModule (const char *module_name)
 	uint64_t now = CLOCK_TIME (hclock::now());
 	* ( (uint64_t *) buf_pointer) = now;
 
-	write_internal (buf + cur_pos, CLOCK_TIME (internal_start), now);
+	write_internal (buf + cur_pos, CLOCK_TIME (start), now);
 }
 
-void Profiler::EndModule()
+void Profiler::EndModule (hclock::time_point start)
 {
 	size_t cur_pos (buf_pos);
 	buf_pos += internal_size;
@@ -191,14 +188,14 @@ void Profiler::EndModule()
 	uint64_t now = CLOCK_TIME (hclock::now());
 	* ( (uint64_t *) buf_pointer) = now;
 
-	write_internal (buf + cur_pos, CLOCK_TIME (internal_start), now);
+	write_internal (buf + cur_pos, CLOCK_TIME (start), now);
 }
 
 void Profiler::Flush()
 {
 	if (!file) return;
 
-	internal_start = hclock::now();
+	hclock::time_point internal_start = hclock::now();
 
 	size_t written = fwrite (buf, 1, buf_pos, file);
 	written++;

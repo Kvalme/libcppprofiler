@@ -24,6 +24,7 @@
 #include "qcppprofwindow.h"
 #include "ui_qcppprofwindow.h"
 #include "cppprofiler.h"
+#include "cppprofiler_format.h"
 #include "QFileDialog"
 #include "QMessageBox"
 #include "threadlistentry.h"
