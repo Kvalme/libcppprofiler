@@ -49,10 +49,12 @@ namespace CPPProfiler
 	#define PROFILE_START(name) CPPProfiler::Profiler::startModule(name);
 	#define PROFILE_END CPPProfiler::Profiler::endModule();
 	#define PROFILE_FUNCTION CPPProfiler::ProfileHelper prof_helper__(__FUNCTION__);
+	#define PROFILE_BLOCK(varname, blockname) CPPProfiler::ProfileHelper name(__FUNCTION__);
 #else
 	#define PROFILE_START(name)
 	#define PROFILE_END
 	#define PROFILE_FUNCTION
+	#define PROFILE_BLOCK(varname, blockname)
 #endif
 
 typedef std::chrono::high_resolution_clock clock;
