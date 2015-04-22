@@ -51,6 +51,7 @@ private slots:
     void on_timeScale_currentIndexChanged(int index);
 
     void updatePlot();
+    void selectedRectChanged(bool selected);
 
 private:
 	struct ProfData

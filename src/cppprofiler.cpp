@@ -40,11 +40,15 @@ using namespace CPPProfiler;
 
 const int internal_size = sizeof(uint64_t) + sizeof(Profiler::RECORD_TYPE) + sizeof(uint64_t);
 
-clock::time_point _profiling_start_ = clock::now();
 thread_local std::unique_ptr<Profiler> Profiler::_profiler_(new Profiler);
 thread_local clock::time_point _internal_start_;
 static int id = 0;
 
+static clock::time_point GetStartTime()
+{
+	static clock::time_point t = clock::now();
+	return t;
+}
 
 Profiler::Profiler() :
 	buf(nullptr),
@@ -55,16 +59,16 @@ Profiler::Profiler() :
 	buf = new char[buf_size];
 	memset(buf, 0, buf_size);
 
-	FileHeader header;
-	header.start_time = std::chrono::duration_cast<std::chrono::nanoseconds>(_profiling_start_.time_since_epoch()).count();
+    FileHeader header;
+	header.start_time = std::chrono::duration_cast<std::chrono::nanoseconds>(GetStartTime().time_since_epoch()).count();
 
 	memcpy(buf, (char *)&header, sizeof(header));
 	buf_pos += sizeof(header);
 
-	const char fname_fmt[] = PROFILING_FILENAME_PREFIX"_%ld_%d.cppprof";
+	const char fname_fmt[] = PROFILING_FILENAME_PREFIX"_%lld_%d.cppprof";
 	char fname[1024];
 
-	std::chrono::nanoseconds start_time_point = std::chrono::duration_cast<std::chrono::nanoseconds>(_profiling_start_.time_since_epoch());
+	std::chrono::nanoseconds start_time_point = std::chrono::duration_cast<std::chrono::nanoseconds>(GetStartTime().time_since_epoch());
 	start_time_point.count();
 
 	snprintf(fname, 1024, fname_fmt, start_time_point.count(), _thread_id_);

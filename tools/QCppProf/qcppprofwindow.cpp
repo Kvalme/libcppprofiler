@@ -71,6 +71,7 @@ QCppProfWindow::QCppProfWindow(QWidget *parent) :
 	ui->PlotArea->xAxis->setLabel(QString("time, %1").arg(ui->timeScale->currentText()));
 	ui->PlotArea->xAxis->setAutoTickLabels(true);
 	ui->PlotArea->xAxis->setAutoTickCount(10);
+//    ui->PlotArea->se
 
 
     connect(ui->PlotArea, SIGNAL(beforeReplot()), this, SLOT(updatePlot()));
@@ -320,6 +321,7 @@ void QCppProfWindow::addRect(double start, double end, int level, QString name, 
 	if ((ui->PlotArea->width() * ((end - start) / ui->PlotArea->xAxis->range().size())) < 1) return;
 
 	QCPItemRect *rect = new QCPItemRect(ui->PlotArea);
+    connect(rect, SIGNAL(selectionChanged(bool)), this, SLOT(selectedRectChanged(bool)));
 	ui->PlotArea->addItem(rect);
 
     rect->topLeft->setType(QCPItemPosition::ptPlotCoords);
@@ -328,6 +330,7 @@ void QCppProfWindow::addRect(double start, double end, int level, QString name, 
     rect->bottomRight->setCoords(end, level);
 	rect->setBrush(QBrush(color));
 	rect->setPen(QPen(Qt::black));
+    rect->setSelectable(true);
 
 	QString txt = QString("%1 (%2 %3)").arg(name).arg(end - start).arg(ui->timeScale->currentText());
 	QString txt_reg = QString("%1 %2").arg(end - start).arg(ui->timeScale->currentText());
@@ -408,4 +411,8 @@ void QCppProfWindow::setRange()
     updatePlot();
 }
 
+void QCppProfWindow::selectedRectChanged(bool isSelected)
+{
+    std::cerr<<"IsSelected"<<isSelected<<std::endl;
+}
 

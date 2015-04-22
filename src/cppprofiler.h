@@ -25,10 +25,12 @@
  ************************************************************************/
 
 #pragma once
+#ifdef ENABLE_PROFILING
 #include <thread>
 #include <chrono>
 #include <mutex>
 #include <map>
+#endif
 
 //Configuration
 
@@ -49,7 +51,8 @@ namespace CPPProfiler
 	#define PROFILE_START(name) CPPProfiler::Profiler::startModule(name);
 	#define PROFILE_END CPPProfiler::Profiler::endModule();
 	#define PROFILE_FUNCTION CPPProfiler::ProfileHelper prof_helper__(__FUNCTION__);
-	#define PROFILE_BLOCK(varname, blockname) CPPProfiler::ProfileHelper name(__FUNCTION__);
+    #define PROFILE_BLOCK(varname, blockname) CPPProfiler::ProfileHelper name(blockname);
+    typedef std::chrono::high_resolution_clock clock;
 #else
 	#define PROFILE_START(name)
 	#define PROFILE_END
@@ -57,11 +60,11 @@ namespace CPPProfiler
 	#define PROFILE_BLOCK(varname, blockname)
 #endif
 
-typedef std::chrono::high_resolution_clock clock;
 
 class Profiler
 {
-	public:
+#ifdef ENABLE_PROFILING
+    public:
 		enum class RECORD_TYPE
 		{
 			MODULE_START = 0,
@@ -101,11 +104,13 @@ class Profiler
 
 		int _fd_;
 		thread_local static std::unique_ptr<Profiler> _profiler_;
+#endif
 };
 
 class ProfileHelper
 {
-	public:
+#ifdef ENABLE_PROFILING
+    public:
 		ProfileHelper(const char *module_name)
 		{
 			Profiler::startModule(module_name);
@@ -114,6 +119,7 @@ class ProfileHelper
 		{
 			Profiler::endModule();
 		}
+#endif
 };
 
 }
