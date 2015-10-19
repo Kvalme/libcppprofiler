@@ -65,7 +65,7 @@ Profiler::Profiler() :
 	memcpy(buf, (char *)&header, sizeof(header));
 	buf_pos += sizeof(header);
 
-	const char fname_fmt[] = PROFILING_FILENAME_PREFIX"_%lld_%d.cppprof";
+	const char fname_fmt[] = PROFILING_FILENAME_PREFIX"_%ld_%d.cppprof";
 	char fname[1024];
 
 	std::chrono::nanoseconds start_time_point = std::chrono::duration_cast<std::chrono::nanoseconds>(GetStartTime().time_since_epoch());
