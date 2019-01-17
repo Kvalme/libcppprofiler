@@ -1,21 +1,21 @@
-cmake_minimum_required (VERSION 2.6)
+cmake_minimum_required (VERSION 3.8)
 
 project(libcppprofiler CXX)
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fPIC")
 
 include_directories(src)
 
 set(libcppprofiler_SOURCES src/cppprofiler.cpp)
 set(libcppprofiler_HEADERS src/cppprofiler.h)
 
-add_library(cppprofiler SHARED ${libcppprofiler_SOURCES})
-add_library(cppprofiler-static STATIC ${libcppprofiler_SOURCES})
+add_library(cppprofiler STATIC ${libcppprofiler_SOURCES} ${libcppprofiler_HEADERS})
 
-SET_TARGET_PROPERTIES(cppprofiler-static PROPERTIES OUTPUT_NAME "cppprofiler")
-SET_TARGET_PROPERTIES(cppprofiler-static PROPERTIES PREFIX "lib")
-SET_TARGET_PROPERTIES(cppprofiler PROPERTIES PUBLIC_HEADER ${libcppprofiler_HEADERS})
+set_target_properties(cppprofiler PROPERTIES OUTPUT_NAME "cppprofiler")
+set_target_properties(cppprofiler PROPERTIES PREFIX "lib")
 
-install( TARGETS cppprofiler cppprofiler-static LIBRARY DESTINATION lib ARCHIVE DESTINATION lib PUBLIC_HEADER DESTINATION include)
+set_target_properties(cppprofiler PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_include_directories(cppprofiler PUBLIC ${libcppprofiler_SOURCE_DIR}/src)
+target_compile_features(cppprofiler PUBLIC cxx_std_14)
+
+install(TARGETS cppprofiler LIBRARY DESTINATION lib ARCHIVE DESTINATION lib PUBLIC_HEADER DESTINATION include)
 
 add_subdirectory(tools)

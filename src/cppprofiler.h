@@ -25,12 +25,10 @@
  ************************************************************************/
 
 #pragma once
-#ifdef ENABLE_PROFILING
 #include <thread>
 #include <chrono>
 #include <mutex>
 #include <map>
-#endif
 
 //Configuration
 
@@ -48,78 +46,97 @@
 namespace CPPProfiler
 {
 #ifdef ENABLE_PROFILING
-	#define PROFILE_START(name) CPPProfiler::Profiler::startModule(name);
-	#define PROFILE_END CPPProfiler::Profiler::endModule();
-	#define PROFILE_FUNCTION CPPProfiler::ProfileHelper prof_helper__(__FUNCTION__);
-    #define PROFILE_BLOCK(varname, blockname) CPPProfiler::ProfileHelper name(blockname);
-    typedef std::chrono::high_resolution_clock clock;
+#define PROFILE_START(name) CPPProfiler::Profiler::startModule(name);
+#define PROFILE_END CPPProfiler::Profiler::endModule();
+#define PROFILE_FUNCTION CPPProfiler::ProfileHelper prof_helper__(__FUNCTION__);
+#define PROFILE_BLOCK(varname, blockname) CPPProfiler::ProfileHelper name(blockname);
 #else
-	#define PROFILE_START(name)
-	#define PROFILE_END
-	#define PROFILE_FUNCTION
-	#define PROFILE_BLOCK(varname, blockname)
+#define PROFILE_START(name)
+#define PROFILE_END
+#define PROFILE_FUNCTION
+#define PROFILE_BLOCK(varname, blockname)
 #endif
+typedef std::chrono::high_resolution_clock clock;
 
 
 class Profiler
 {
-#ifdef ENABLE_PROFILING
-    public:
-		enum class RECORD_TYPE
-		{
-			MODULE_START = 0,
-			MODULE_END,
-			INTERNAL_RECORD = 0xFF,
-			DATA_DUMP
-		};
+public:
+    enum class RECORD_TYPE
+    {
+        MODULE_START = 0,
+        MODULE_END,
+        INTERNAL_RECORD = 0xFF,
+        DATA_DUMP
+    };
 
 #pragma pack(push, 1)
-		struct FileHeader
-		{
-			const char MAGIC[7] = {'C', 'P', 'P', 'P', 'R', 'O', 'F'};
-			int64_t start_time;
-		};
+    struct FileHeader
+    {
+        const char MAGIC[7] = {'C', 'P', 'P', 'P', 'R', 'O', 'F'};
+        int64_t start_time;
+    };
 #pragma pack(pop)
 
-		static void init();
+    static void init();
 
-		static void startModule(const char *module_name);
-		static void endModule();
-
-		static void flushProfiling();
-
-		~Profiler();
-
-	private:
-		Profiler();
-		void _StartModule(const char *module_name);
-		void _EndModule();
-		void _Flush();
-
-		char *buf;
-		int buf_size;
-		int buf_pos;
-
-		int _thread_id_;
-
-		int _fd_;
-		thread_local static std::unique_ptr<Profiler> _profiler_;
+    static void startModule(const char *module_name)
+    {
+#ifdef ENABLE_PROFILING
+        _internal_start_ = clock::now();
+        _profiler_->_StartModule(module_name);
 #endif
+    }
+
+    static void endModule()
+    {
+#ifdef ENABLE_PROFILING
+        _internal_start_ = clock::now();
+        _profiler_->_EndModule();
+#endif
+    }
+
+    static void flushProfiling()
+    {
+#ifdef ENABLE_PROFILING
+        _profiler_->_Flush();
+#endif
+    }
+
+    ~Profiler();
+
+private:
+    Profiler();
+    void _StartModule(const char *module_name);
+    void _EndModule();
+    void _Flush();
+
+    char *buf;
+    int buf_size;
+    int buf_pos;
+
+    int _thread_id_;
+
+    int _fd_;
+    thread_local static std::unique_ptr<Profiler> _profiler_;
+    thread_local static clock::time_point _internal_start_;
 };
 
 class ProfileHelper
 {
+public:
+    ProfileHelper(const char *module_name)
+    {
 #ifdef ENABLE_PROFILING
-    public:
-		ProfileHelper(const char *module_name)
-		{
-			Profiler::startModule(module_name);
-		}
-		~ProfileHelper()
-		{
-			Profiler::endModule();
-		}
+        Profiler::startModule(module_name);
 #endif
+    }
+    ~ProfileHelper()
+    {
+#ifdef ENABLE_PROFILING
+        Profiler::endModule();
+#endif
+    }
 };
 
 }

@@ -24,8 +24,6 @@ HEADERS  += qcppprofwindow.h \
 INCLUDEPATH += ../../src
 
 QMAKE_CXXFLAGS+=-std=c++11
-QMAKE_CC = gcc-4.8
-QMAKE_CXX = g++-4.8
 
 FORMS    += qcppprofwindow.ui \
     threadlistentry.ui
